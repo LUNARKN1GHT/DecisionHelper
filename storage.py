@@ -1,8 +1,20 @@
 import json
+import sys
 from pathlib import Path
 from models import Decision
 
-DATA_FILE = Path("data/decisions.json")
+
+def _data_file() -> Path:
+    if sys.platform == "win32":
+        base = Path.home() / "AppData" / "Roaming" / "DecisionHelper"
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support" / "DecisionHelper"
+    else:
+        base = Path.home() / ".decisionhelper"
+    return base / "decisions.json"
+
+
+DATA_FILE = _data_file()
 
 
 def load_decisions() -> list[Decision]:

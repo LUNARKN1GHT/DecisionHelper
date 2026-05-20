@@ -12,3 +12,6 @@ CLAUDE.md
 
 # vscode 配置
 .vscode/
+
+# 用户目录文件
+.DS_Store
