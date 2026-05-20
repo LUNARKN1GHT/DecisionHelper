@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+dist/
+build/
+*.spec
+
+# 用户数据
+data/
+
+# AI
+CLAUDE.md
