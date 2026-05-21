@@ -144,9 +144,10 @@ class MatrixView(ctk.CTkToplevel):
         frame.grid(row=3, column=0, sticky="ew", padx=24, pady=(4, 16))
         frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkButton(
+        self.results_btn = ctk.CTkButton(
             frame, text="查看结果", command=self._toggle_results
-        ).grid(row=0, column=0, pady=(10, 4))
+        )
+        self.results_btn.grid(row=0, column=0, pady=(10, 4))
 
         self.results_label = ctk.CTkLabel(frame, text="", text_color="gray")
         self.results_label.grid(row=1, column=0, pady=(0, 10))
@@ -156,8 +157,10 @@ class MatrixView(ctk.CTkToplevel):
         self._results_visible = not self._results_visible
         if self._results_visible:
             self._show_results()
+            self.results_btn.configure(text="隐藏结果")
         else:
             self.results_label.configure(text="")
+            self.results_btn.configure(text="查看结果")
 
     def _show_results(self):
         ranked = self.decision.ranked_options()

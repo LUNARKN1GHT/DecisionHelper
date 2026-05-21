@@ -61,12 +61,17 @@ class MainWindow(ctk.CTk):
             row.grid_columnconfigure(0, weight=1)
 
             ctk.CTkLabel(row, text=decision.title, font=ctk.CTkFont(size=15), anchor="w").grid(
-                row=0, column=0, sticky="ew", padx=16, pady=10
+                row=0, column=0, sticky="ew", padx=16, pady=(10, 2)
             )
+            summary = f"{len(decision.options)} 选项 · {len(decision.criteria)} 标准"
+            ctk.CTkLabel(
+                row, text=summary, font=ctk.CTkFont(size=11),
+                text_color="gray", anchor="w"
+            ).grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 8))
             ctk.CTkLabel(
                 row, text=decision.created_at[:10], font=ctk.CTkFont(size=11),
                 text_color="gray", anchor="e"
-            ).grid(row=0, column=1, padx=16)
+            ).grid(row=0, column=1, rowspan=2, padx=16)
 
             row.bind("<Button-1>", lambda e, idx=i: self._select(idx))
             for child in row.winfo_children():
