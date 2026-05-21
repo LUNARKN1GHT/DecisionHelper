@@ -100,7 +100,6 @@ class MatrixView(ctk.CTkToplevel):
     def _refresh_matrix(self):
         for w in self.matrix_outer.winfo_children():
             w.destroy()
-        self._score_vars: dict[tuple[str, str], ctk.StringVar] = {}
 
         criteria = self.decision.criteria
         options = self.decision.options
@@ -129,13 +128,15 @@ class MatrixView(ctk.CTkToplevel):
             ).grid(row=i + 1, column=0, padx=4, pady=4, sticky="w")
 
             for j, c in enumerate(criteria):
-                var = ctk.StringVar(value=str(existing.get((opt, c.id), "")))
-                self._score_vars[(opt, c.id)] = var
-                entry = ctk.CTkEntry(
-                    self.matrix_outer, textvariable=var, width=60, justify="center"
+                current = existing.get((opt, c.id))
+                combo = ctk.CTkComboBox(
+                    self.matrix_outer,
+                    values=["1", "2", "3", "4", "5"],
+                    width=70,
+                    command=lambda val, o=opt, cid=c.id: self._on_score_change(o, cid, val),
                 )
-                entry.grid(row=i + 1, column=j + 1, padx=4, pady=4)
-                var.trace_add("write", lambda *_, o=opt, cid=c.id: self._on_score_change(o, cid))
+                combo.set(str(current) if current else "")
+                combo.grid(row=i + 1, column=j + 1, padx=4, pady=4)
 
     # ── 结果排名 ──────────────────────────────────────────
     def _build_results(self):
@@ -143,17 +144,25 @@ class MatrixView(ctk.CTkToplevel):
         frame.grid(row=3, column=0, sticky="ew", padx=24, pady=(4, 16))
         frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(frame, text="排名结果", font=ctk.CTkFont(weight="bold")).grid(
-            row=0, column=0, pady=(10, 4)
-        )
-        self.results_label = ctk.CTkLabel(frame, text="—", text_color="gray")
-        self.results_label.grid(row=1, column=0, pady=(0, 10))
-        self._refresh_results()
+        ctk.CTkButton(
+            frame, text="查看结果", command=self._toggle_results
+        ).grid(row=0, column=0, pady=(10, 4))
 
-    def _refresh_results(self):
+        self.results_label = ctk.CTkLabel(frame, text="", text_color="gray")
+        self.results_label.grid(row=1, column=0, pady=(0, 10))
+        self._results_visible = False
+
+    def _toggle_results(self):
+        self._results_visible = not self._results_visible
+        if self._results_visible:
+            self._show_results()
+        else:
+            self.results_label.configure(text="")
+
+    def _show_results(self):
         ranked = self.decision.ranked_options()
         if not ranked or all(score is None for _, score in ranked):
-            self.results_label.configure(text="填写评分后显示结果")
+            self.results_label.configure(text="暂无完整评分数据")
             return
         lines = []
         for rank, (opt, score) in enumerate(ranked, 1):
@@ -174,7 +183,6 @@ class MatrixView(ctk.CTkToplevel):
         self._save()
         self._refresh_options()
         self._refresh_matrix()
-        self._refresh_results()
 
     def _delete_option(self):
         if not self._selected_option:
@@ -187,24 +195,40 @@ class MatrixView(ctk.CTkToplevel):
         self._save()
         self._refresh_options()
         self._refresh_matrix()
-        self._refresh_results()
 
     def _add_criterion(self):
         name = simpledialog.askstring("添加标准", "标准名称：", parent=self)
         if not name or not name.strip():
             return
-        weight_str = simpledialog.askstring("权重", "权重（1–3）：", parent=self)
-        try:
-            weight = int(weight_str)
-            assert 1 <= weight <= 3
-        except (TypeError, ValueError, AssertionError):
-            messagebox.showerror("错误", "权重须为 1、2 或 3", parent=self)
+        weight = self._ask_weight()
+        if weight is None:
             return
         self.decision.criteria.append(Criterion(name=name.strip(), weight=weight))
         self._save()
         self._refresh_criteria()
         self._refresh_matrix()
-        self._refresh_results()
+
+    def _ask_weight(self) -> int | None:
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("选择权重")
+        dialog.geometry("260x140")
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        ctk.CTkLabel(dialog, text="权重（1 最低，5 最高）：").pack(pady=(20, 8))
+        combo = ctk.CTkComboBox(dialog, values=["1", "2", "3", "4", "5"], width=100, state="readonly")
+        combo.set("3")
+        combo.pack()
+
+        result: list[int | None] = [None]
+
+        def confirm():
+            result[0] = int(combo.get())
+            dialog.destroy()
+
+        ctk.CTkButton(dialog, text="确定", command=confirm).pack(pady=12)
+        dialog.wait_window()
+        return result[0]
 
     def _delete_criterion(self):
         if not self._selected_criterion:
@@ -217,14 +241,10 @@ class MatrixView(ctk.CTkToplevel):
         self._save()
         self._refresh_criteria()
         self._refresh_matrix()
-        self._refresh_results()
 
-    def _on_score_change(self, option: str, criterion_id: str):
-        var = self._score_vars.get((option, criterion_id))
-        if var is None:
-            return
+    def _on_score_change(self, option: str, criterion_id: str, val: str):
         try:
-            value = int(var.get())
+            value = int(val)
             assert 1 <= value <= 5
         except (ValueError, AssertionError):
             return
@@ -234,7 +254,6 @@ class MatrixView(ctk.CTkToplevel):
         ]
         self.decision.scores.append(Score(option=option, criterion_id=criterion_id, value=value))
         self._save()
-        self._refresh_results()
 
     def _save(self):
         if self.on_save:
