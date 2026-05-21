@@ -52,14 +52,17 @@ class MatrixView(ctk.CTkToplevel):
 
         btn_row = ctk.CTkFrame(frame, fg_color="transparent")
         btn_row.grid(row=2, column=0, columnspan=2, pady=8, padx=8, sticky="ew")
-        btn_row.grid_columnconfigure((0, 1), weight=1)
-        ctk.CTkButton(btn_row, text="＋ 添加", width=80, command=self._add_option).grid(
-            row=0, column=0, padx=(0, 4), sticky="ew"
+        btn_row.grid_columnconfigure((0, 1, 2), weight=1)
+        ctk.CTkButton(btn_row, text="＋ 添加", width=60, command=self._add_option).grid(
+            row=0, column=0, padx=(0, 2), sticky="ew"
+        )
+        ctk.CTkButton(btn_row, text="编辑", width=60, command=self._edit_option).grid(
+            row=0, column=1, padx=2, sticky="ew"
         )
         ctk.CTkButton(
-            btn_row, text="删除", width=80, fg_color="#e05252", hover_color="#b83c3c",
+            btn_row, text="删除", width=60, fg_color="#e05252", hover_color="#b83c3c",
             command=self._delete_option
-        ).grid(row=0, column=1, padx=(4, 0), sticky="ew")
+        ).grid(row=0, column=2, padx=(2, 0), sticky="ew")
 
         self._selected_option: str | None = None
         self._refresh_options()
@@ -79,14 +82,17 @@ class MatrixView(ctk.CTkToplevel):
 
         btn_row = ctk.CTkFrame(frame, fg_color="transparent")
         btn_row.grid(row=2, column=0, columnspan=2, pady=8, padx=8, sticky="ew")
-        btn_row.grid_columnconfigure((0, 1), weight=1)
-        ctk.CTkButton(btn_row, text="＋ 添加", width=80, command=self._add_criterion).grid(
-            row=0, column=0, padx=(0, 4), sticky="ew"
+        btn_row.grid_columnconfigure((0, 1, 2), weight=1)
+        ctk.CTkButton(btn_row, text="＋ 添加", width=60, command=self._add_criterion).grid(
+            row=0, column=0, padx=(0, 2), sticky="ew"
+        )
+        ctk.CTkButton(btn_row, text="编辑", width=60, command=self._edit_criterion).grid(
+            row=0, column=1, padx=2, sticky="ew"
         )
         ctk.CTkButton(
-            btn_row, text="删除", width=80, fg_color="#e05252", hover_color="#b83c3c",
+            btn_row, text="删除", width=60, fg_color="#e05252", hover_color="#b83c3c",
             command=self._delete_criterion
-        ).grid(row=0, column=1, padx=(4, 0), sticky="ew")
+        ).grid(row=0, column=2, padx=(2, 0), sticky="ew")
 
         self._selected_criterion: str | None = None
         self._refresh_criteria()
@@ -187,6 +193,28 @@ class MatrixView(ctk.CTkToplevel):
         self._refresh_options()
         self._refresh_matrix()
 
+    def _edit_option(self):
+        if not self._selected_option:
+            messagebox.showinfo("提示", "请先选择一个选项", parent=self)
+            return
+        old = self._selected_option
+        new = simpledialog.askstring("编辑选项", "新名称：", initialvalue=old, parent=self)
+        if not new or not new.strip() or new.strip() == old:
+            return
+        new = new.strip()
+        if new in self.decision.options:
+            messagebox.showwarning("重复", f"选项「{new}」已存在", parent=self)
+            return
+        idx = self.decision.options.index(old)
+        self.decision.options[idx] = new
+        for s in self.decision.scores:
+            if s.option == old:
+                s.option = new
+        self._selected_option = new
+        self._save()
+        self._refresh_options()
+        self._refresh_matrix()
+
     def _delete_option(self):
         if not self._selected_option:
             messagebox.showinfo("提示", "请先选择一个选项", parent=self)
@@ -232,6 +260,23 @@ class MatrixView(ctk.CTkToplevel):
         ctk.CTkButton(dialog, text="确定", command=confirm).pack(pady=12)
         dialog.wait_window()
         return result[0]
+
+    def _edit_criterion(self):
+        if not self._selected_criterion:
+            messagebox.showinfo("提示", "请先选择一个标准", parent=self)
+            return
+        cid = self._selected_criterion
+        criterion = next(c for c in self.decision.criteria if c.id == cid)
+        new_name = simpledialog.askstring("编辑标准", "新名称：", initialvalue=criterion.name, parent=self)
+        if not new_name or not new_name.strip() or new_name.strip() == criterion.name:
+            return
+        criterion.name = new_name.strip()
+        new_weight = self._ask_weight()
+        if new_weight is not None:
+            criterion.weight = new_weight
+        self._save()
+        self._refresh_criteria()
+        self._refresh_matrix()
 
     def _delete_criterion(self):
         if not self._selected_criterion:
